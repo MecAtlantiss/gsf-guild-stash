@@ -122,19 +122,15 @@
   }
 
   /* ── Controls ── */
-  .controls {
+  .controls-wrap {
     max-width: 900px;
     margin: 28px auto 0;
     padding: 0 24px;
     display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
   }
-  .controls-row2 {
-    max-width: 900px;
-    margin: 10px auto 0;
-    padding: 0 24px;
+  .controls-row {
     display: flex;
     gap: 12px;
     align-items: center;
@@ -147,6 +143,7 @@
     color: var(--text-dim);
     text-transform: uppercase;
     white-space: nowrap;
+    min-width: 80px;
   }
 
   .search-wrap {
@@ -179,7 +176,7 @@
   input[type="search"]::placeholder { color: var(--text-dim); }
 
   .filter-btn {
-    padding: 10px 18px;
+    padding: 8px 16px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 3px;
@@ -193,13 +190,6 @@
   }
   .filter-btn:hover { border-color: var(--gold-dim); color: var(--text); }
   .filter-btn.active { border-color: var(--gold); color: var(--gold); background: #1a1508; }
-
-  /* Important-specific active style — gold tint */
-  .filter-btn[data-imp].active {
-    border-color: var(--gold);
-    color: var(--gold);
-    background: #1a1200;
-  }
 
   /* ── Table ── */
   .table-wrap {
@@ -249,10 +239,10 @@
     letter-spacing: 0.08em;
     font-weight: 600;
   }
-  .badge-yes  { background: #0f2b18; border: 1px solid #2a6b3a; color: var(--green-lit); }
-  .badge-no   { background: #1e0e0e; border: 1px solid #4a1818; color: #b05050; }
+  .badge-yes { background: #0f2b18; border: 1px solid #2a6b3a; color: var(--green-lit); }
+  .badge-no  { background: #1e0e0e; border: 1px solid #4a1818; color: #b05050; }
 
-  /* The ★ Important tag shown inline next to the unique name */
+  /* ★ Important tag next to name */
   .tag-imp {
     display: inline-block;
     padding: 2px 7px;
@@ -269,7 +259,18 @@
     line-height: 1.6;
   }
 
-  .first-seen-cell { color: var(--text-dim); font-size: 14px; font-style: italic; }
+  /* Source cell */
+  .source-cell {
+    color: var(--text-dim);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  .first-seen-cell {
+    color: var(--text-dim);
+    font-size: 14px;
+    font-style: italic;
+  }
 
   .status-msg {
     text-align: center;
@@ -287,10 +288,13 @@
     letter-spacing: 0.04em;
   }
 
-  @media (max-width: 600px) {
-    th:nth-child(3), td:nth-child(3) { display: none; }
+  @media (max-width: 640px) {
+    th:nth-child(4), td:nth-child(4) { display: none; }
     .stats-bar { gap: 28px; }
     .stat-value { font-size: 24px; }
+  }
+  @media (max-width: 480px) {
+    th:nth-child(3), td:nth-child(3) { display: none; }
   }
 </style>
 </head>
@@ -327,22 +331,29 @@
   </div>
 </div>
 
-<!-- Row 1: search + have/missing filters -->
-<div class="controls">
-  <div class="search-wrap">
-    <input type="search" id="search" placeholder="Search uniques…" autocomplete="off">
+<div class="controls-wrap">
+  <!-- Row 1: search -->
+  <div class="controls-row">
+    <div class="search-wrap">
+      <input type="search" id="search" placeholder="Search uniques…" autocomplete="off">
+    </div>
   </div>
-  <button class="filter-btn active" data-have="all">All</button>
-  <button class="filter-btn" data-have="1">Have</button>
-  <button class="filter-btn" data-have="0">Missing</button>
-</div>
 
-<!-- Row 2: important filter -->
-<div class="controls-row2">
-  <span class="controls-label">★ Important:</span>
-  <button class="filter-btn" data-imp="all">All</button>
-  <button class="filter-btn active" data-imp="1">Important Only</button>
-  <button class="filter-btn" data-imp="0">Non-Important Only</button>
+  <!-- Row 2: Have / Don't Have filter -->
+  <div class="controls-row">
+    <span class="controls-label">Status:</span>
+    <button class="filter-btn active" data-have="all">All</button>
+    <button class="filter-btn" data-have="1">Have</button>
+    <button class="filter-btn" data-have="0">Don't Have</button>
+  </div>
+
+  <!-- Row 3: Important filter -->
+  <div class="controls-row">
+    <span class="controls-label">★ Priority:</span>
+    <button class="filter-btn" data-imp="all">All</button>
+    <button class="filter-btn active" data-imp="1">Important Only</button>
+    <button class="filter-btn" data-imp="0">Non-Important Only</button>
+  </div>
 </div>
 
 <div class="table-wrap">
@@ -352,6 +363,7 @@
       <tr>
         <th data-col="name">Unique Name <span class="sort-arrow">↕</span></th>
         <th data-col="have">Status <span class="sort-arrow">↕</span></th>
+        <th data-col="source">Source <span class="sort-arrow">↕</span></th>
         <th data-col="first_seen">First Seen <span class="sort-arrow">↕</span></th>
       </tr>
     </thead>
@@ -364,13 +376,13 @@
 const MASTER_CSV    = "./guild_stash_master.csv";
 const IMPORTANT_CSV = "./important_uniques.csv";
 
-let allRows      = [];   // merged data
-let sortCol      = "name";
-let sortDir      = 1;
-let filterHave   = "all";
-let filterImp    = "1";
+let allRows    = [];
+let sortCol    = "name";
+let sortDir    = 1;
+let filterHave = "all";
+let filterImp  = "1";
 
-// ── CSV helpers ──────────────────────────────────────────
+// ── CSV helpers ───────────────────────────────────────────
 async function fetchCSV(path) {
   const resp = await fetch(path + "?t=" + Date.now());
   if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${path}`);
@@ -395,9 +407,9 @@ function parseCSV(text) {
   }).filter(r => r["Unique Name"]);
 }
 
-// ── Render ───────────────────────────────────────────────
+// ── Render ────────────────────────────────────────────────
 function renderTable() {
-  const query  = document.getElementById("search").value.toLowerCase();
+  const query = document.getElementById("search").value.toLowerCase();
   let rows = [...allRows];
 
   if (filterHave !== "all") rows = rows.filter(r => r["Ever Seen"]  === filterHave);
@@ -407,6 +419,7 @@ function renderTable() {
   rows.sort((a, b) => {
     let av, bv;
     if      (sortCol === "have")       { av = a["Ever Seen"];   bv = b["Ever Seen"];   }
+    else if (sortCol === "source")     { av = a["_source"];     bv = b["_source"];     }
     else if (sortCol === "first_seen") { av = a["First Seen"];  bv = b["First Seen"];  }
     else                               { av = a["Unique Name"]; bv = b["Unique Name"]; }
     if (av < bv) return -sortDir;
@@ -417,32 +430,37 @@ function renderTable() {
   const tbody = document.getElementById("tbody");
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:40px;color:var(--text-dim);font-style:italic;">No uniques match your filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-dim);font-style:italic;">No uniques match your filters.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = rows.map(r => {
-    const have    = r["Ever Seen"] === "1";
-    const imp     = r["_important"] === "1";
-    const badge   = have
+    const have   = r["Ever Seen"] === "1";
+    const imp    = r["_important"] === "1";
+    const source = r["_source"] || "";
+
+    const badge  = have
       ? `<span class="badge badge-yes">✓ Have</span>`
       : `<span class="badge badge-no">✗ Missing</span>`;
-    const impTag  = imp ? `<span class="tag-imp">★ Important</span>` : "";
-    const fs      = r["First Seen"]
+    const impTag = imp ? `<span class="tag-imp">★ Important</span>` : "";
+    const srcCell  = `<td class="source-cell">${source || "—"}</td>`;
+    const fsCell   = r["First Seen"]
       ? `<td class="first-seen-cell">${r["First Seen"]}</td>`
       : `<td class="first-seen-cell">—</td>`;
+
     return `<tr>
       <td class="name-cell">${r["Unique Name"]}${impTag}</td>
       <td>${badge}</td>
-      ${fs}
+      ${srcCell}
+      ${fsCell}
     </tr>`;
   }).join("");
 }
 
 function updateStats() {
-  const total   = allRows.length;
-  const owned   = allRows.filter(r => r["Ever Seen"] === "1").length;
-  const pct     = total ? Math.round(owned / total * 100) : 0;
+  const total = allRows.length;
+  const owned = allRows.filter(r => r["Ever Seen"] === "1").length;
+  const pct   = total ? Math.round(owned / total * 100) : 0;
   document.getElementById("stat-total").textContent    = total;
   document.getElementById("stat-owned").textContent    = owned;
   document.getElementById("stat-missing").textContent  = total - owned;
@@ -450,29 +468,31 @@ function updateStats() {
   document.getElementById("progress-fill").style.width = pct + "%";
 }
 
-// ── Init ─────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────
 async function init() {
   try {
-    // Load both CSVs concurrently; important_uniques.csv is optional
-    const [masterText, importantText] = await Promise.allSettled([
+    const [masterResult, importantResult] = await Promise.allSettled([
       fetchCSV(MASTER_CSV),
       fetchCSV(IMPORTANT_CSV),
     ]);
 
-    if (masterText.status === "rejected") throw masterText.reason;
+    if (masterResult.status === "rejected") throw masterResult.reason;
 
-    const masterRows = parseCSV(masterText.value);
+    const masterRows = parseCSV(masterResult.value);
 
-    // Build a Set of important names for O(1) lookup
-    const importantNames = new Set();
-    if (importantText.status === "fulfilled") {
-      parseCSV(importantText.value).forEach(r => importantNames.add(r["Unique Name"]));
+    // Build a map of important name -> source for O(1) lookup
+    const importantMap = new Map(); // name -> source string
+    if (importantResult.status === "fulfilled") {
+      parseCSV(importantResult.value).forEach(r => {
+        importantMap.set(r["Unique Name"], r["Source"] || "");
+      });
     }
 
-    // Merge: add _important flag to each master row
+    // Merge important flag and source into each master row
     allRows = masterRows.map(r => ({
       ...r,
-      _important: importantNames.has(r["Unique Name"]) ? "1" : "0",
+      _important: importantMap.has(r["Unique Name"]) ? "1" : "0",
+      _source:    importantMap.get(r["Unique Name"]) || "",
     }));
 
     document.getElementById("status").style.display = "none";
@@ -489,7 +509,7 @@ async function init() {
   }
 }
 
-// ── Event listeners ──────────────────────────────────────
+// ── Event listeners ───────────────────────────────────────
 document.querySelectorAll("[data-have]").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("[data-have]").forEach(b => b.classList.remove("active"));
