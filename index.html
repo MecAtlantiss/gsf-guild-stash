@@ -654,18 +654,28 @@ async function init() {
     ]);
     if (masterResult.status === "rejected") throw masterResult.reason;
 
-    const masterRows   = parseCSV(masterResult.value);
-    const categoryMap = new Map();
-    if (uniqueDataResult.status === "fulfilled") {
-      parseCSV(uniqueDataResult.value).forEach(r => {
-        categoryMap.set(r["Unique Name"], r["Category"] || "");
-      });
-    }
+    // Build lookup of master data by name
+    const masterRows = parseCSV(masterResult.value);
+    const masterMap  = new Map();
+    masterRows.forEach(r => masterMap.set(r["Unique Name"], r));
 
-    allRows = masterRows.map(r => ({
-      ...r,
-      _category: categoryMap.get(r["Unique Name"]) || "",
-    }));
+    // unique_data.csv is the source of truth for which uniques appear.
+    // Uniques in unique_data but missing from master are treated as not yet seen.
+    // Uniques in master but absent from unique_data are ignored entirely.
+    if (uniqueDataResult.status === "rejected")
+      throw new Error("unique_data.csv failed to load: " + uniqueDataResult.reason);
+
+    const uniqueDataRows = parseCSV(uniqueDataResult.value);
+    allRows = uniqueDataRows.map(r => {
+      const name   = r["Unique Name"];
+      const master = masterMap.get(name);
+      return {
+        "Unique Name": name,
+        "Ever Seen":   master ? master["Ever Seen"]  : "0",
+        "First Seen":  master ? master["First Seen"] : "",
+        _category:     r["Category"] || "",
+      };
+    });
 
     document.getElementById("status").style.display = "none";
     document.getElementById("table").style.display  = "table";
@@ -677,7 +687,7 @@ async function init() {
     renderTable();
   } catch (e) {
     document.getElementById("status").textContent =
-      "Could not load guild_stash_master.csv. Make sure it exists in the repo root.";
+      "Could not load data files. Make sure guild_stash_master.csv and unique_data.csv exist in the repo root.";
     console.error(e);
   }
 }
