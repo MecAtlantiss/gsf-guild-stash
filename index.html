@@ -767,7 +767,12 @@ function restoreFilters() {
     });
   }
   const savedSource = sessionStorage.getItem("filterSource");
-  if (savedSource !== null) filterSource = savedSource;
+  if (savedSource !== null) {
+    // Use setSourceFilter so the Clear button and active states are also restored
+    filterSource = savedSource;
+    document.getElementById("clear-source-btn").style.display =
+      savedSource !== "all" ? "inline-block" : "none";
+  }
   if (savedQuery) document.getElementById("search").value = savedQuery;
   sessionStorage.removeItem("filterHave");
   sessionStorage.removeItem("filterImp");
