@@ -245,6 +245,22 @@
   tbody tr:hover { background: #181410; }
   td { padding: 10px 12px; vertical-align: middle; }
   .name-cell { color: var(--unique); font-weight: 600; font-size: 16px; white-space: nowrap; }
+  .wiki-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 7px;
+    border-radius: 3px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+    vertical-align: middle;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+  .wiki-btn:hover { opacity: 1; }
+  .wiki-btn img { width: 14px; height: 14px; display: block; }
   .badge {
     display: inline-block;
     padding: 2px 9px;
@@ -504,6 +520,15 @@ function parseCSV(text) {
   }).filter(r => r["Unique Name"]);
 }
 
+// ── Wiki URL helper ──────────────────────────────────────
+function wikiUrl(name) {
+  return "https://www.poewiki.net/wiki/" + name.split("").map(c => {
+    // encodeURIComponent everything except spaces (which become underscores)
+    if (c === " ") return "_";
+    return encodeURIComponent(c).replace(/%27/gi, "'"); // wiki keeps apostrophes unencoded
+  }).join("");
+}
+
 // ── Render table ──────────────────────────────────────────
 function renderTable() {
   const query = document.getElementById("search").value.toLowerCase();
@@ -543,8 +568,9 @@ function renderTable() {
     const fsCell  = r["First Seen"]
       ? `<td class="first-seen-cell">${r["First Seen"]}</td>`
       : `<td class="first-seen-cell">—</td>`;
+    const wikiLink = `<a class="wiki-btn" href="${wikiUrl(r["Unique Name"])}" target="_blank" rel="noopener" title="View on PoE Wiki"><img src="https://www.poewiki.net/favicon.ico" alt="wiki"></a>`;
     return `<tr>
-      <td class="name-cell">${r["Unique Name"]}${impTag}</td>
+      <td class="name-cell">${wikiLink}${r["Unique Name"]}${impTag}</td>
       <td>${badge}</td>
       ${srcCell}
       ${fsCell}
