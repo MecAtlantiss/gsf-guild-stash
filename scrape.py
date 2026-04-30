@@ -239,6 +239,9 @@ def scrape():
             raw_name = name_tag.get_text(strip=True)
             owned    = 0 if "unowned" in item.get("class", []) else 1
 
+            if raw_name in ("Bisco's Collar", "The Ascetic", "Eldritch Knowledge"):
+                continue
+
             if raw_name == "Precursor's Emblem":
                 item_json    = next(precursor_iter, {})
                 display_name = precursor_label(item_json)
@@ -325,3 +328,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
