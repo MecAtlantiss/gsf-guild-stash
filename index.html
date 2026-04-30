@@ -244,7 +244,7 @@
   }
   tbody tr:hover { background: #181410; }
   td { padding: 10px 12px; vertical-align: middle; }
-  .name-cell { color: var(--unique); font-weight: 600; font-size: 16px; }
+  .name-cell { color: var(--unique); font-weight: 600; font-size: 16px; white-space: nowrap; }
   .badge {
     display: inline-block;
     padding: 2px 9px;
@@ -292,6 +292,15 @@
     gap: 4px;
     margin-bottom: 16px;
   }
+  .source-bar-clickable {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin: 0 -8px 10px;
+    transition: background 0.15s;
+  }
+  .source-bar-clickable:hover { background: #1a1508; }
+  .source-bar-active { background: #1e1600 !important; outline: 1px solid var(--gold-dim); }
   .source-bar-header {
     display: flex;
     justify-content: space-between;
@@ -406,6 +415,12 @@
         <button class="filter-btn active" data-imp="1">Important Only</button>
         <button class="filter-btn" data-imp="0">Non-Important Only</button>
       </div>
+      <div class="controls-row" id="source-filter-row" style="display:none">
+        <span class="controls-label">Source:</span>
+        <button class="filter-btn active" data-src="all">All</button>
+        <div id="source-filter-btns" style="display:contents"></div>
+        <button class="filter-btn clear-source-btn" id="clear-source-btn" style="display:none; border-color:#8b2020; color:#b05050;" onclick="clearSourceFilter()">✕ Clear</button>
+      </div>
     </div>
 
     <!-- Table -->
@@ -432,7 +447,7 @@
     <div class="right-col-title">★ Important Progress</div>
 
     <!-- All-important bar (always present) -->
-    <div class="source-bar-row">
+    <div class="source-bar-row source-bar-clickable" id="imp-bar-row">
       <div class="source-bar-header">
         <span class="source-bar-name">All Important</span>
         <span class="source-bar-counts" id="imp-progress-counts"></span>
@@ -452,11 +467,12 @@
 const MASTER_CSV    = "./guild_stash_master.csv";
 const IMPORTANT_CSV = "./important_uniques.csv";
 
-let allRows    = [];
-let sortCol    = "name";
-let sortDir    = 1;
-let filterHave = "all";
-let filterImp  = "1";
+let allRows      = [];
+let sortCol      = "name";
+let sortDir      = 1;
+let filterHave   = "all";
+let filterImp    = "1";
+let filterSource = "all";
 
 // ── CSV helpers ───────────────────────────────────────────
 async function fetchCSV(path) {
@@ -488,9 +504,10 @@ function renderTable() {
   const query = document.getElementById("search").value.toLowerCase();
   let rows = [...allRows];
 
-  if (filterHave !== "all") rows = rows.filter(r => r["Ever Seen"]  === filterHave);
-  if (filterImp  !== "all") rows = rows.filter(r => r["_important"] === filterImp);
-  if (query)                rows = rows.filter(r => r["Unique Name"].toLowerCase().includes(query));
+  if (filterHave   !== "all") rows = rows.filter(r => r["Ever Seen"]  === filterHave);
+  if (filterImp    !== "all") rows = rows.filter(r => r["_important"] === filterImp);
+  if (filterSource !== "all") rows = rows.filter(r => r["_source"]    === filterSource);
+  if (query)                  rows = rows.filter(r => r["Unique Name"].toLowerCase().includes(query));
 
   rows.sort((a, b) => {
     let av, bv;
@@ -530,6 +547,51 @@ function renderTable() {
   }).join("");
 }
 
+// ── Source filter row (populated dynamically) ────────────
+function updateSourceFilterRow() {
+  const sources = [...new Set(
+    allRows
+      .filter(r => r["_important"] === "1" && r["_source"])
+      .map(r => r["_source"])
+  )].sort();
+
+  const row = document.getElementById("source-filter-row");
+  const btns = document.getElementById("source-filter-btns");
+
+  if (sources.length === 0) { row.style.display = "none"; return; }
+  row.style.display = "flex";
+
+  btns.innerHTML = sources.map(src =>
+    `<button class="filter-btn${filterSource === src ? " active" : ""}" data-src="${src}">${src}</button>`
+  ).join("");
+
+  // Wire up click events on newly created buttons
+  btns.querySelectorAll("[data-src]").forEach(btn => {
+    btn.addEventListener("click", () => setSourceFilter(btn.dataset.src));
+  });
+}
+
+function setSourceFilter(src) {
+  filterSource = src;
+  // Update active state on all source buttons including "All"
+  document.querySelectorAll("[data-src]").forEach(b => {
+    b.classList.toggle("active", b.dataset.src === src);
+  });
+  // Auto-switch imp filter to Important Only when a source is selected
+  if (src !== "all" && filterImp === "0") {
+    filterImp = "1";
+    document.querySelectorAll("[data-imp]").forEach(b => {
+      b.classList.toggle("active", b.dataset.imp === "1");
+    });
+  }
+  document.getElementById("clear-source-btn").style.display = src !== "all" ? "inline-block" : "none";
+  renderTable();
+}
+
+function clearSourceFilter() {
+  setSourceFilter("all");
+}
+
 // ── Update stats + progress bars ─────────────────────────
 function updateStats() {
   const total = allRows.length;
@@ -562,13 +624,15 @@ function updateStats() {
   }
 
   const sourceBarsEl = document.getElementById("source-bars");
+  updateSourceFilterRow();
   if (sourceMap.size === 0) { sourceBarsEl.innerHTML = ""; return; }
 
   const sorted = [...sourceMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   sourceBarsEl.innerHTML = sorted.map(([src, data]) => {
-    const p = data.total ? Math.round(data.owned / data.total * 100) : 0;
+    const p       = data.total ? Math.round(data.owned / data.total * 100) : 0;
+    const isActive = filterSource === src;
     return `
-      <div class="source-bar-row">
+      <div class="source-bar-row source-bar-clickable${isActive ? " source-bar-active" : ""}" data-src="${src}">
         <div class="source-bar-header">
           <span class="source-bar-name">${src}</span>
           <span class="source-bar-counts">${data.owned}/${data.total} (${p}%)</span>
@@ -578,6 +642,23 @@ function updateStats() {
         </div>
       </div>`;
   }).join("");
+
+  // Wire click events on source bar rows
+  sourceBarsEl.querySelectorAll(".source-bar-clickable").forEach(el => {
+    el.addEventListener("click", () => {
+      const src = el.dataset.src;
+      // Toggle off if already active
+      setSourceFilter(filterSource === src ? "all" : src);
+      // Re-render bars to update active highlight
+      updateStats();
+    });
+  });
+
+  // Also wire the All Important bar to clear source filter
+  document.getElementById("imp-bar-row").onclick = () => {
+    setSourceFilter("all");
+    updateStats();
+  };
 }
 
 // ── Init ──────────────────────────────────────────────────
@@ -655,9 +736,10 @@ init();
 
 // ── Filter state persistence (survives auto-refresh) ─────
 function saveFilters() {
-  sessionStorage.setItem("filterHave",  filterHave);
-  sessionStorage.setItem("filterImp",   filterImp);
-  sessionStorage.setItem("searchQuery", document.getElementById("search").value);
+  sessionStorage.setItem("filterHave",   filterHave);
+  sessionStorage.setItem("filterImp",    filterImp);
+  sessionStorage.setItem("filterSource", filterSource);
+  sessionStorage.setItem("searchQuery",  document.getElementById("search").value);
 }
 
 function restoreFilters() {
@@ -676,9 +758,12 @@ function restoreFilters() {
       b.classList.toggle("active", b.dataset.imp === filterImp);
     });
   }
+  const savedSource = sessionStorage.getItem("filterSource");
+  if (savedSource !== null) filterSource = savedSource;
   if (savedQuery) document.getElementById("search").value = savedQuery;
   sessionStorage.removeItem("filterHave");
   sessionStorage.removeItem("filterImp");
+  sessionStorage.removeItem("filterSource");
   sessionStorage.removeItem("searchQuery");
 }
 
