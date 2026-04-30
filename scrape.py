@@ -34,7 +34,8 @@ POESESSID = config.POESESSID
 if not POESESSID:
     raise SystemExit("ERROR: POESESSID is empty in config.py.")
 
-BASE_URL     = "https://www.pathofexile.com/guild/view-stash/995704/c63aa081/{}"
+#BASE_URL     = "https://www.pathofexile.com/guild/view-stash/995704/c63aa081/{}"
+BASE_URL     = "https://www.pathofexile.com/account/view-stash/EpsilonLessThanZero%237811/815a13a7/{}"
 NUM_TABS     = 23
 INTERVAL     = 30  # seconds between runs
 
