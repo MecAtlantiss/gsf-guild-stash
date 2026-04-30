@@ -342,10 +342,21 @@
     .col-right { position: static; width: 100%; max-height: none; border-top: 1px solid var(--border); }
   }
   @media (max-width: 560px) {
-    th:nth-child(4), td:nth-child(4) { display: none; }
-  }
-  @media (max-width: 420px) {
     th:nth-child(3), td:nth-child(3) { display: none; }
+  }
+  /* Right column scales down fluidly as viewport narrows */
+  @media (max-width: 1100px) {
+    .col-right { flex: 0 0 220px; width: 220px; padding: 20px 16px; }
+    .source-bar-name   { font-size: 11px; }
+    .source-bar-counts { font-size: 11px; }
+    .right-col-title   { font-size: 13px; }
+  }
+  @media (max-width: 860px) {
+    .col-right { flex: 0 0 160px; width: 160px; padding: 16px 12px; }
+    .source-bar-name   { font-size: 10px; }
+    .source-bar-counts { font-size: 10px; }
+    .right-col-title   { font-size: 11px; }
+    .source-bar-row    { margin-bottom: 10px; }
   }
 </style>
 </head>
