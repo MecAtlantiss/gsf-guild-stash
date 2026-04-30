@@ -532,14 +532,13 @@ function renderTable() {
   }
 
   tbody.innerHTML = rows.map(r => {
-    const have   = r["Ever Seen"] === "1";
+    const have     = r["Ever Seen"] === "1";
     const category = r["_category"] || "";
-    const badge  = have
+    const badge    = have
       ? `<span class="badge badge-yes">✓ Have</span>`
       : `<span class="badge badge-no">✗ Missing</span>`;
-
-    
-    const fsCell  = r["First Seen"]
+    const catCell  = `<td class="source-cell">${category || "—"}</td>`;
+    const fsCell   = r["First Seen"]
       ? `<td class="first-seen-cell">${r["First Seen"]}</td>`
       : `<td class="first-seen-cell">—</td>`;
     const wikiLink = `<a class="wiki-btn" href="${wikiUrl(r["Unique Name"])}" target="_blank" rel="noopener" title="View on PoE Wiki"><img src="https://www.poewiki.net/favicon.ico" alt="wiki"></a>`;
