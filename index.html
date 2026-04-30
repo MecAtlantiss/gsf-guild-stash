@@ -277,7 +277,7 @@
   .source-cell    { color: var(--text-dim); font-size: 13px; font-style: italic; }
   .first-seen-cell { color: var(--text-dim); font-size: 13px; font-style: italic; }
 
-  /* ── Right column: important progress bars ── */
+  /* ── Right column: category progress bars ── */
   .right-col-title {
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 15px;
@@ -418,12 +418,7 @@
         <button class="filter-btn" data-have="1">Have</button>
         <button class="filter-btn" data-have="0">Don't Have</button>
       </div>
-      <div class="controls-row">
-        <span class="controls-label">Difficulty to Obtain:</span>
-        <button class="filter-btn" data-imp="all">All</button>
-        <button class="filter-btn active" data-imp="1">Difficult</button>
-        <button class="filter-btn" data-imp="0">Easy</button>
-      </div>
+
       <div class="controls-row" id="source-filter-row" style="display:none">
         <span class="controls-label">Source:</span>
         <button class="filter-btn active" data-src="all">All</button>
@@ -440,7 +435,7 @@
           <tr>
             <th data-col="name">Unique Name <span class="sort-arrow">↕</span></th>
             <th data-col="have">Status <span class="sort-arrow">↕</span></th>
-            <th data-col="source">Source <span class="sort-arrow">↕</span></th>
+            <th data-col="source">Category <span class="sort-arrow">↕</span></th>
             <th data-col="first_seen">First Seen <span class="sort-arrow">↕</span></th>
           </tr>
         </thead>
@@ -453,19 +448,9 @@
 
   <!-- ═══ RIGHT COLUMN ═══ -->
   <div class="col-right">
-    <div class="right-col-title">Difficult to Obtain Progress</div>
+    <div class="right-col-title">Category Progress</div>
 
-    <!-- All-important bar (always present) -->
-    <div class="source-bar-row source-bar-clickable" id="imp-bar-row">
-      <div class="source-bar-header">
-        <span class="source-bar-name">All Difficults</span>
-        <span class="source-bar-counts" id="imp-progress-counts"></span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill-imp" style="width:0%"></div>
-      </div>
-    </div>
-    <div style="border-bottom: 1px solid var(--border); margin: 4px 0 14px;"></div>
+
 
     <!-- Per-source bars injected by JS -->
     <div id="source-bars"></div>
@@ -475,14 +460,14 @@
 
 <script>
 const MASTER_CSV    = "./guild_stash_master.csv";
-const IMPORTANT_CSV = "./important_uniques.csv";
+const UNIQUE_DATA_CSV = "./unique_data.csv";
 
 let allRows      = [];
 let sortCol      = "name";
 let sortDir      = 1;
 let filterHave   = "all";
-let filterImp    = "1";
-let filterSource = "all";
+
+let filterCategory = "all";
 
 // ── CSV helpers ───────────────────────────────────────────
 async function fetchCSV(path) {
@@ -525,14 +510,14 @@ function renderTable() {
   let rows = [...allRows];
 
   if (filterHave   !== "all") rows = rows.filter(r => r["Ever Seen"]  === filterHave);
-  if (filterImp    !== "all") rows = rows.filter(r => r["_important"] === filterImp);
-  if (filterSource !== "all") rows = rows.filter(r => r["_source"]    === filterSource);
+
+  if (filterCategory !== "all") rows = rows.filter(r => r["_category"] === filterCategory);
   if (query)                  rows = rows.filter(r => r["Unique Name"].toLowerCase().includes(query));
 
   rows.sort((a, b) => {
     let av, bv;
     if      (sortCol === "have")       { av = a["Ever Seen"];   bv = b["Ever Seen"];   }
-    else if (sortCol === "source")     { av = a["_source"];     bv = b["_source"];     }
+    else if (sortCol === "source")     { av = a["_category"]; bv = b["_category"]; }
     else if (sortCol === "first_seen") { av = a["First Seen"];  bv = b["First Seen"];  }
     else                               { av = a["Unique Name"]; bv = b["Unique Name"]; }
     if (av < bv) return -sortDir;
@@ -548,21 +533,20 @@ function renderTable() {
 
   tbody.innerHTML = rows.map(r => {
     const have   = r["Ever Seen"] === "1";
-    const imp    = r["_important"] === "1";
-    const source = r["_source"] || "";
+    const category = r["_category"] || "";
     const badge  = have
       ? `<span class="badge badge-yes">✓ Have</span>`
       : `<span class="badge badge-no">✗ Missing</span>`;
-    const impTag  = imp ? `<span class="tag-imp">★</span>` : "";
-    const srcCell = `<td class="source-cell">${source || "—"}</td>`;
+
+    
     const fsCell  = r["First Seen"]
       ? `<td class="first-seen-cell">${r["First Seen"]}</td>`
       : `<td class="first-seen-cell">—</td>`;
     const wikiLink = `<a class="wiki-btn" href="${wikiUrl(r["Unique Name"])}" target="_blank" rel="noopener" title="View on PoE Wiki"><img src="https://www.poewiki.net/favicon.ico" alt="wiki"></a>`;
     return `<tr>
-      <td class="name-cell">${wikiLink}${r["Unique Name"]}${impTag}</td>
+      <td class="name-cell">${wikiLink}${r["Unique Name"]}</td>
       <td>${badge}</td>
-      ${srcCell}
+      ${catCell}
       ${fsCell}
     </tr>`;
   }).join("");
@@ -572,8 +556,8 @@ function renderTable() {
 function updateSourceFilterRow() {
   const sources = [...new Set(
     allRows
-      .filter(r => r["_important"] === "1" && r["_source"])
-      .map(r => r["_source"])
+      .filter(r => r["_category"])
+      .map(r => r["_category"])
   )].sort();
 
   const row = document.getElementById("source-filter-row");
@@ -583,7 +567,7 @@ function updateSourceFilterRow() {
   row.style.display = "flex";
 
   btns.innerHTML = sources.map(src =>
-    `<button class="filter-btn${filterSource === src ? " active" : ""}" data-src="${src}">${src}</button>`
+    `<button class="filter-btn${filterCategory === src ? " active" : ""}" data-src="${src}">${src}</button>`
   ).join("");
 
   // Wire up click events on newly created buttons
@@ -593,19 +577,14 @@ function updateSourceFilterRow() {
 }
 
 function setSourceFilter(src) {
-  filterSource = src;
+  filterCategory = src;
   // Update active state on all source buttons including "All"
   document.querySelectorAll("[data-src]").forEach(b => {
     b.classList.toggle("active", b.dataset.src === src);
   });
-  // Auto-switch imp filter to Important Only when a source is selected
-  if (src !== "all" && filterImp === "0") {
-    filterImp = "1";
-    document.querySelectorAll("[data-imp]").forEach(b => {
-      b.classList.toggle("active", b.dataset.imp === "1");
-    });
-  }
+
   document.getElementById("clear-source-btn").style.display = src !== "all" ? "inline-block" : "none";
+  filterCategory = src;
   renderTable();
 }
 
@@ -623,19 +602,10 @@ function updateStats() {
   document.getElementById("stat-pct").textContent            = pct + "%";
   document.getElementById("progress-fill").style.width = pct + "%";
 
-  // All-important bar
-  const impRows  = allRows.filter(r => r["_important"] === "1");
-  const impOwned = impRows.filter(r => r["Ever Seen"] === "1").length;
-  const impTotal = impRows.length;
-  const impPct   = impTotal ? Math.round(impOwned / impTotal * 100) : 0;
-  document.getElementById("progress-fill-imp").style.width = impPct + "%";
-  document.getElementById("imp-progress-counts").textContent =
-    impTotal > 0 ? `${impOwned} / ${impTotal} (${impPct}%)` : "";
-
   // Per-source bars
   const sourceMap = new Map();
-  for (const r of impRows) {
-    const src = r["_source"] || "";
+  for (const r of allRows) {
+    const src = r["_category"] || "";
     if (!src) continue;
     if (!sourceMap.has(src)) sourceMap.set(src, { total: 0, owned: 0 });
     const entry = sourceMap.get(src);
@@ -650,7 +620,7 @@ function updateStats() {
   const sorted = [...sourceMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   sourceBarsEl.innerHTML = sorted.map(([src, data]) => {
     const p       = data.total ? Math.round(data.owned / data.total * 100) : 0;
-    const isActive = filterSource === src;
+    const isActive = filterCategory === src;
     return `
       <div class="source-bar-row source-bar-clickable${isActive ? " source-bar-active" : ""}" data-src="${src}">
         <div class="source-bar-header">
@@ -668,40 +638,34 @@ function updateStats() {
     el.addEventListener("click", () => {
       const src = el.dataset.src;
       // Toggle off if already active
-      setSourceFilter(filterSource === src ? "all" : src);
+      setSourceFilter(filterCategory === src ? "all" : src);
       // Re-render bars to update active highlight
       updateStats();
     });
   });
 
-  // Also wire the All Important bar to clear source filter
-  document.getElementById("imp-bar-row").onclick = () => {
-    setSourceFilter("all");
-    updateStats();
-  };
 }
 
 // ── Init ──────────────────────────────────────────────────
 async function init() {
   try {
-    const [masterResult, importantResult] = await Promise.allSettled([
+    const [masterResult, uniqueDataResult] = await Promise.allSettled([
       fetchCSV(MASTER_CSV),
-      fetchCSV(IMPORTANT_CSV),
+      fetchCSV(UNIQUE_DATA_CSV),
     ]);
     if (masterResult.status === "rejected") throw masterResult.reason;
 
     const masterRows   = parseCSV(masterResult.value);
-    const importantMap = new Map();
-    if (importantResult.status === "fulfilled") {
-      parseCSV(importantResult.value).forEach(r => {
-        importantMap.set(r["Unique Name"], r["Source"] || "");
+    const categoryMap = new Map();
+    if (uniqueDataResult.status === "fulfilled") {
+      parseCSV(uniqueDataResult.value).forEach(r => {
+        categoryMap.set(r["Unique Name"], r["Category"] || "");
       });
     }
 
     allRows = masterRows.map(r => ({
       ...r,
-      _important: importantMap.has(r["Unique Name"]) ? "1" : "0",
-      _source:    importantMap.get(r["Unique Name"]) || "",
+      _category: categoryMap.get(r["Unique Name"]) || "",
     }));
 
     document.getElementById("status").style.display = "none";
@@ -732,14 +696,7 @@ document.querySelectorAll("[data-have]").forEach(btn => {
   });
 });
 
-document.querySelectorAll("[data-imp]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll("[data-imp]").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    filterImp = btn.dataset.imp;
-    renderTable();
-  });
-});
+
 
 document.querySelectorAll("th[data-col]").forEach(th => {
   th.addEventListener("click", () => {
@@ -760,38 +717,28 @@ init();
 // ── Filter state persistence (survives auto-refresh) ─────
 function saveFilters() {
   sessionStorage.setItem("filterHave",   filterHave);
-  sessionStorage.setItem("filterImp",    filterImp);
-  sessionStorage.setItem("filterSource", filterSource);
+  sessionStorage.setItem("filterCategory", filterCategory);
   sessionStorage.setItem("searchQuery",  document.getElementById("search").value);
 }
 
 function restoreFilters() {
   const savedHave  = sessionStorage.getItem("filterHave");
-  const savedImp   = sessionStorage.getItem("filterImp");
   const savedQuery = sessionStorage.getItem("searchQuery");
-  if (savedHave  !== null) {
+  if (savedHave !== null) {
     filterHave = savedHave;
     document.querySelectorAll("[data-have]").forEach(b => {
       b.classList.toggle("active", b.dataset.have === filterHave);
     });
   }
-  if (savedImp !== null) {
-    filterImp = savedImp;
-    document.querySelectorAll("[data-imp]").forEach(b => {
-      b.classList.toggle("active", b.dataset.imp === filterImp);
-    });
-  }
-  const savedSource = sessionStorage.getItem("filterSource");
-  if (savedSource !== null) {
-    // Use setSourceFilter so the Clear button and active states are also restored
-    filterSource = savedSource;
+  const savedCategory = sessionStorage.getItem("filterCategory");
+  if (savedCategory !== null) {
+    filterCategory = savedCategory;
     document.getElementById("clear-source-btn").style.display =
-      savedSource !== "all" ? "inline-block" : "none";
+      savedCategory !== "all" ? "inline-block" : "none";
   }
   if (savedQuery) document.getElementById("search").value = savedQuery;
   sessionStorage.removeItem("filterHave");
-  sessionStorage.removeItem("filterImp");
-  sessionStorage.removeItem("filterSource");
+  sessionStorage.removeItem("filterCategory");
   sessionStorage.removeItem("searchQuery");
 }
 
