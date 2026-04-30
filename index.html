@@ -384,12 +384,8 @@
     <!-- Stats -->
     <div class="stats-bar">
       <div class="stat">
-        <span class="stat-value" id="stat-total">—</span>
-        <span class="stat-label">Total Uniques</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value" id="stat-owned">—</span>
-        <span class="stat-label">Ever Seen</span>
+        <span class="stat-value" id="stat-seen-of-total">—</span>
+        <span class="stat-label">Uniques Seen</span>
       </div>
       <div class="stat">
         <span class="stat-value" id="stat-missing">—</span>
@@ -622,10 +618,9 @@ function updateStats() {
   const total = allRows.length;
   const owned = allRows.filter(r => r["Ever Seen"] === "1").length;
   const pct   = total ? Math.round(owned / total * 100) : 0;
-  document.getElementById("stat-total").textContent    = total;
-  document.getElementById("stat-owned").textContent    = owned;
-  document.getElementById("stat-missing").textContent  = total - owned;
-  document.getElementById("stat-pct").textContent      = pct + "%";
+  document.getElementById("stat-seen-of-total").textContent = `${owned} of ${total}`;
+  document.getElementById("stat-missing").textContent        = total - owned;
+  document.getElementById("stat-pct").textContent            = pct + "%";
   document.getElementById("progress-fill").style.width = pct + "%";
 
   // All-important bar
