@@ -136,8 +136,12 @@
     height: 100%;
     background: linear-gradient(90deg, var(--gold-dim), var(--gold-glow));
     border-radius: 3px;
-    transition: width 0.6s ease;
+    transition: width 0.6s ease, background 0.6s ease, box-shadow 0.6s ease;
     box-shadow: 0 0 10px var(--gold-dim);
+  }
+  .progress-fill.complete {
+    background: linear-gradient(90deg, #1a5c2a, #4caf72);
+    box-shadow: 0 0 10px #2a6b3a;
   }
 
   /* ── Controls (inside left col) ── */
@@ -591,6 +595,12 @@ function clearSourceFilter() {
   setSourceFilter("all");
 }
 
+// ── Progress fill helper ─────────────────────────────────
+function setFill(el, pct) {
+  el.style.width = pct + "%";
+  el.classList.toggle("complete", pct >= 100);
+}
+
 // ── Update stats + progress bars ─────────────────────────
 function updateStats() {
   const total = allRows.length;
@@ -599,7 +609,7 @@ function updateStats() {
   document.getElementById("stat-seen-of-total").textContent = `${owned} of ${total}`;
   document.getElementById("stat-missing").textContent        = total - owned;
   document.getElementById("stat-pct").textContent            = pct + "%";
-  document.getElementById("progress-fill").style.width = pct + "%";
+  setFill(document.getElementById("progress-fill"), pct);
 
   // Per-source bars
   const sourceMap = new Map();
@@ -627,7 +637,7 @@ function updateStats() {
           <span class="source-bar-counts">${data.owned}/${data.total} (${p}%)</span>
         </div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:${p}%"></div>
+          <div class="progress-fill${p >= 100 ? ' complete' : ''}" style="width:${p}%"></div>
         </div>
       </div>`;
   }).join("");
