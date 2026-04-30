@@ -557,6 +557,50 @@ document.querySelectorAll("th[data-col]").forEach(th => {
 document.getElementById("search").addEventListener("input", renderTable);
 
 init();
+
+// ── Auto-refresh on new commit ────────────────────────────
+// Polls the GitHub API every 60s to check for new commits.
+// If a new commit is detected, reloads the page to pull fresh CSV data.
+//
+// SETUP: update GITHUB_USER and GITHUB_REPO to match your repo.
+const GITHUB_USER = "MecAtlantiss";
+const GITHUB_REPO = "gsf-guild-stash";
+const POLL_INTERVAL_MS = 60_000; // 60 seconds
+
+let lastKnownSha = null;
+
+async function getLatestCommitSha() {
+  const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/commits?per_page=1`;
+  const resp = await fetch(url, {
+    headers: { "Accept": "application/vnd.github.v3+json" }
+  });
+  if (!resp.ok) throw new Error(`GitHub API error: ${resp.status}`);
+  const data = await resp.json();
+  return data[0]?.sha ?? null;
+}
+
+async function pollForUpdates() {
+  try {
+    const sha = await getLatestCommitSha();
+    if (lastKnownSha === null) {
+      // First poll — just record the current SHA, don't reload
+      lastKnownSha = sha;
+    } else if (sha && sha !== lastKnownSha) {
+      // New commit detected — reload to fetch updated CSVs
+      console.log(`New commit detected (${sha.slice(0, 7)}), reloading...`);
+      location.reload();
+    }
+  } catch (e) {
+    // Silently ignore API errors (rate limit, network blip, etc.)
+    console.warn("Auto-refresh poll failed:", e.message);
+  }
+}
+
+// Start polling after initial load
+setTimeout(() => {
+  pollForUpdates();
+  setInterval(pollForUpdates, POLL_INTERVAL_MS);
+}, 5000); // 5s delay so the initial page load settles first
 </script>
 </body>
 </html>
