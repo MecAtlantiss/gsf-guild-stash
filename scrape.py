@@ -1,8 +1,31 @@
+"""
+PoE Guild Stash Unique Showcase Scraper - Persistent Monitor
+=============================================================
+Scrapes the guild stash showcase every 30 seconds.
+
+Each run saves a timestamped snapshot CSV to ./snapshots/
+A master CSV tracks all uniques ever seen, with first-seen timestamps.
+
+Special handling: "Precursor's Emblem" items are renamed based on which
+charge types appear in their stats:
+  Frenzy    -> G (green)
+  Endurance -> R (red)
+  Power     -> B (blue)
+Combinations are sorted R > G > B, e.g. "Precursor RG", "Precursor RGB"
+
+SETUP:
+    pip install requests beautifulsoup4
+    Ensure config.py is in the same folder with POESESSID = "your_value"
+    Then run: python scrape_guild_stash.py
+"""
+
 import requests
 from bs4 import BeautifulSoup
 import csv
 import time
 import os
+import re
+import json
 from datetime import datetime
 import config
 
@@ -11,13 +34,13 @@ POESESSID = config.POESESSID
 if not POESESSID:
     raise SystemExit("ERROR: POESESSID is empty in config.py.")
 
-BASE_URL    = "https://www.pathofexile.com/guild/view-stash/995704/c63aa081/{}"
-NUM_TABS    = 23
-INTERVAL    = 30  # seconds between runs
+BASE_URL     = "https://www.pathofexile.com/guild/view-stash/995704/c63aa081/{}"
+NUM_TABS     = 23
+INTERVAL     = 30  # seconds between runs
 
-SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
-SNAPSHOT_DIR  = os.path.join(SCRIPT_DIR, "snapshots")
-MASTER_PATH   = os.path.join(SCRIPT_DIR, "guild_stash_master.csv")
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+SNAPSHOT_DIR = os.path.join(SCRIPT_DIR, "snapshots")
+MASTER_PATH  = os.path.join(SCRIPT_DIR, "guild_stash_master.csv")
 
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
@@ -30,6 +53,77 @@ SESSION.headers.update({
     "Referer":         "https://www.pathofexile.com/",
 })
 
+
+# ── Precursor's Emblem handling ───────────────────────────
+
+def precursor_label(item_json):
+    """
+    Given a parsed item JSON dict, return a label like "Precursor RG".
+    Scans all mod fields for Endurance / Frenzy / Power keywords.
+    Order is always R -> G -> B.
+    Falls back to "Precursor's Emblem" if nothing is detected.
+    """
+    mod_fields = [
+        "implicitMods", "explicitMods", "utilityMods",
+        "enchantMods", "craftedMods", "fracturedMods",
+    ]
+    all_text = " ".join(
+        mod
+        for field in mod_fields
+        for mod in item_json.get(field, [])
+        if isinstance(mod, str)
+    )
+
+    has_r = "Endurance" in all_text
+    has_g = "Frenzy"    in all_text
+    has_b = "Power"     in all_text
+
+    if not any([has_r, has_g, has_b]):
+        print(f"    WARNING: Could not detect charge type for Precursor's Emblem. Mods: {all_text!r}")
+        return "Precursor's Emblem"
+
+    label = "Precursor "
+    if has_r: label += "R"
+    if has_g: label += "G"
+    if has_b: label += "B"
+    return label
+
+
+def extract_precursor_queue(page_html):
+    """
+    Parse the DeferredItemRenderer JSON from the page and return an ordered
+    list of parsed item dicts for every Precursor's Emblem found, in the
+    order they appear in the JSON (which matches DOM order).
+
+    The JS blob looks like:
+        (new R([[0, {item}, {opts}], [1, {item}, {opts}], ...])).run();
+    """
+    match = re.search(
+        r'\(new R\((\[\[.*?\]\])\)\)\.run\(\)',
+        page_html,
+        re.DOTALL
+    )
+    if not match:
+        print("    WARNING: Could not find DeferredItemRenderer JSON in page.")
+        return []
+
+    try:
+        items_array = json.loads(match.group(1))
+    except json.JSONDecodeError as e:
+        print(f"    WARNING: Failed to parse item JSON: {e}")
+        return []
+
+    # Pull out only the Precursor's Emblem entries, preserving order
+    return [
+        entry[1]
+        for entry in items_array
+        if len(entry) >= 2
+        and isinstance(entry[1], dict)
+        and entry[1].get("name") == "Precursor's Emblem"
+    ]
+
+
+# ── Core scraping ─────────────────────────────────────────
 
 def load_master():
     """Load master CSV into a dict: { unique_name -> {"Ever Seen": 0/1, "First Seen": ""} }"""
@@ -71,13 +165,29 @@ def scrape():
         if "loginForm" in resp.text or (soup.title and "Sign In" in soup.title.get_text()):
             raise SystemExit("ERROR: Session expired. Update POESESSID and restart.")
 
+        # Build an ordered queue of Precursor JSON entries for this page.
+        # As we walk the DOM and encounter each Precursor div, we pop from
+        # the front of this queue — preserving the same order as the JSON.
+        precursor_queue = extract_precursor_queue(resp.text)
+        precursor_iter  = iter(precursor_queue)
+
         for item in soup.select("div.item"):
             name_tag = item.select_one("div.name span")
             if not name_tag:
                 continue
+
+            raw_name = name_tag.get_text(strip=True)
+            owned    = 0 if "unowned" in item.get("class", []) else 1
+
+            if raw_name == "Precursor's Emblem":
+                item_json    = next(precursor_iter, {})
+                display_name = precursor_label(item_json)
+            else:
+                display_name = raw_name
+
             results.append({
-                "Unique Name": name_tag.get_text(strip=True),
-                "Have":        0 if "unowned" in item.get("class", []) else 1,
+                "Unique Name": display_name,
+                "Have":        owned,
             })
 
         time.sleep(0.5)  # gentle between tabs
@@ -111,7 +221,6 @@ def run_once(run_number):
     for row in results:
         name = row["Unique Name"]
         if name not in master:
-            # New unique encountered for the first time across all runs
             master[name] = {"Ever Seen": 0, "First Seen": ""}
 
         if row["Have"] == 1 and master[name]["Ever Seen"] == 0:
