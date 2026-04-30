@@ -54,6 +54,30 @@ SESSION.headers.update({
 })
 
 
+# ── Known variant sets (used for pigeonhole assignment) ─────
+PRECURSOR_VARIANTS = [
+    "Precursor R",
+    "Precursor G",
+    "Precursor B",
+    "Precursor RG",
+    "Precursor RB",
+    "Precursor GB",
+    "Precursor RGB",
+]
+
+GRAND_SPECTRUM_VARIANTS = [
+    "Grand Spectrum Frenzy",
+    "Grand Spectrum Endurance",
+    "Grand Spectrum Power",
+    "Grand Spectrum Life",
+    "Grand Spectrum Resistances",
+    "Grand Spectrum Crit Chance",
+    "Grand Spectrum Elemental Damage",
+    "Grand Spectrum Minions",
+    "Grand Spectrum Avoid Ailments",
+]
+
+
 # ── Precursor's Emblem handling ───────────────────────────
 
 def precursor_label(item_json):
@@ -162,7 +186,7 @@ def extract_precursor_queue(page_html):
         re.DOTALL
     )
     if not match:
-        print("    WARNING: Could not find DeferredItemRenderer JSON in page.")
+        # Normal if the tab has no owned items — no JSON is embedded in that case
         return []
 
     try:
@@ -223,13 +247,17 @@ def scrape():
         if "loginForm" in resp.text or (soup.title and "Sign In" in soup.title.get_text()):
             raise SystemExit("ERROR: Session expired. Update POESESSID and restart.")
 
-        # Build an ordered queue of Precursor JSON entries for this page.
-        # As we walk the DOM and encounter each Precursor div, we pop from
-        # the front of this queue — preserving the same order as the JSON.
+        # Extract JSON queues for multi-variant items
         precursor_queue      = extract_precursor_queue(resp.text)
         precursor_iter       = iter(precursor_queue)
         grand_spectrum_queue = extract_grand_spectrum_queue(resp.text)
         grand_spectrum_iter  = iter(grand_spectrum_queue)
+
+        # First pass: collect all items on this page, identifying owned
+        # variants by their mods and marking unowned ones as placeholders.
+        page_precursors     = []  # list of {"name": str|None, "owned": bool}
+        page_grand_spectra  = []
+        page_others         = []
 
         for item in soup.select("div.item"):
             name_tag = item.select_one("div.name span")
@@ -243,17 +271,50 @@ def scrape():
                 continue
 
             if raw_name == "Precursor's Emblem":
-                item_json    = next(precursor_iter, {})
-                display_name = precursor_label(item_json)
-            elif raw_name == "Grand Spectrum":
-                item_json    = next(grand_spectrum_iter, {})
-                display_name = grand_spectrum_label(item_json)
-            else:
-                display_name = raw_name
+                item_json = next(precursor_iter, {})
+                if owned:
+                    # Owned: we can read the mods to identify the variant
+                    display_name = precursor_label(item_json)
+                else:
+                    # Unowned: placeholder — will assign by elimination below
+                    display_name = None
+                page_precursors.append({"name": display_name, "owned": owned})
 
+            elif raw_name == "Grand Spectrum":
+                item_json = next(grand_spectrum_iter, {})
+                if owned:
+                    display_name = grand_spectrum_label(item_json)
+                else:
+                    display_name = None
+                page_grand_spectra.append({"name": display_name, "owned": owned})
+
+            else:
+                page_others.append({"name": raw_name, "owned": owned})
+
+        # Second pass: assign unowned placeholders by elimination.
+        # The known variants that were identified as owned are removed from
+        # the pool; remaining variants are assigned in order to the unowned slots.
+        def assign_unowned(entries, all_variants):
+            owned_names = {e["name"] for e in entries if e["owned"] and e["name"]}
+            remaining   = [v for v in all_variants if v not in owned_names]
+            remaining_iter = iter(remaining)
+            assigned = []
+            for e in entries:
+                if e["name"] is not None:
+                    assigned.append(e)
+                else:
+                    fallback = next(remaining_iter, "Unknown")
+                    assigned.append({"name": fallback, "owned": e["owned"]})
+            return assigned
+
+        page_precursors    = assign_unowned(page_precursors,    PRECURSOR_VARIANTS)
+        page_grand_spectra = assign_unowned(page_grand_spectra, GRAND_SPECTRUM_VARIANTS)
+
+        # Combine all items and append to results
+        for entry in page_others + page_precursors + page_grand_spectra:
             results.append({
-                "Unique Name": display_name,
-                "Have":        owned,
+                "Unique Name": entry["name"],
+                "Have":        entry["owned"],
             })
 
         time.sleep(0.5)  # gentle between tabs
@@ -328,4 +389,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
