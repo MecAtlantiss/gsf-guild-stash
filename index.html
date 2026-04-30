@@ -257,19 +257,12 @@
   .badge-yes { background: #0f2b18; border: 1px solid #2a6b3a; color: var(--green-lit); }
   .badge-no  { background: #1e0e0e; border: 1px solid #4a1818; color: #b05050; }
   .tag-imp {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 2px;
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    font-weight: 700;
-    background: #1e1000;
-    border: 1px solid var(--gold-dim);
+    display: inline;
     color: var(--gold);
-    margin-left: 7px;
+    font-size: 13px;
+    margin-left: 5px;
     vertical-align: middle;
-    line-height: 1.6;
+    line-height: 1;
   }
   .source-cell    { color: var(--text-dim); font-size: 13px; font-style: italic; }
   .first-seen-cell { color: var(--text-dim); font-size: 13px; font-style: italic; }
@@ -533,7 +526,7 @@ function renderTable() {
     const badge  = have
       ? `<span class="badge badge-yes">✓ Have</span>`
       : `<span class="badge badge-no">✗ Missing</span>`;
-    const impTag  = imp ? `<span class="tag-imp">★ Important</span>` : "";
+    const impTag  = imp ? `<span class="tag-imp">★</span>` : "";
     const srcCell = `<td class="source-cell">${source || "—"}</td>`;
     const fsCell  = r["First Seen"]
       ? `<td class="first-seen-cell">${r["First Seen"]}</td>`
