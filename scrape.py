@@ -89,6 +89,64 @@ def precursor_label(item_json):
     return label
 
 
+def grand_spectrum_label(item_json):
+    """
+    Given a parsed item JSON dict, return the correct Grand Spectrum label.
+    Looks for Frenzy / Endurance / Power / Life keywords in mods.
+    Falls back to "Grand Spectrum" if nothing is detected.
+    """
+    mod_fields = [
+        "implicitMods", "explicitMods", "utilityMods",
+        "enchantMods", "craftedMods", "fracturedMods",
+    ]
+    all_text = " ".join(
+        mod
+        for field in mod_fields
+        for mod in item_json.get(field, [])
+        if isinstance(mod, str)
+    )
+
+    if "Frenzy"                in all_text: return "Grand Spectrum Frenzy"
+    if "Endurance"             in all_text: return "Grand Spectrum Endurance"
+    if "Power"                 in all_text: return "Grand Spectrum Power"
+    if "Life"                  in all_text: return "Grand Spectrum Life"
+    if "Elemental Resistances" in all_text: return "Grand Spectrum Resistances"
+    if "Critical Strike Chance" in all_text: return "Grand Spectrum Crit Chance"
+    if "Elemental Damage"      in all_text: return "Grand Spectrum Elemental Damage"
+    if "Minions"               in all_text: return "Grand Spectrum Minions"
+    if "Avoid Elemental"       in all_text: return "Grand Spectrum Avoid Ailments"
+
+    print(f"    WARNING: Could not detect type for Grand Spectrum. Mods: {all_text!r}")
+    return "Grand Spectrum"
+
+
+def extract_grand_spectrum_queue(page_html):
+    """
+    Parse the DeferredItemRenderer JSON and return an ordered list of
+    item dicts for every Grand Spectrum found, in DOM order.
+    """
+    match = re.search(
+        r'\(new R\((\[\[.*?\]\])\)\)\.run\(\)',
+        page_html,
+        re.DOTALL
+    )
+    if not match:
+        return []
+
+    try:
+        items_array = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+
+    return [
+        entry[1]
+        for entry in items_array
+        if len(entry) >= 2
+        and isinstance(entry[1], dict)
+        and entry[1].get("name") == "Grand Spectrum"
+    ]
+
+
 def extract_precursor_queue(page_html):
     """
     Parse the DeferredItemRenderer JSON from the page and return an ordered
@@ -168,8 +226,10 @@ def scrape():
         # Build an ordered queue of Precursor JSON entries for this page.
         # As we walk the DOM and encounter each Precursor div, we pop from
         # the front of this queue — preserving the same order as the JSON.
-        precursor_queue = extract_precursor_queue(resp.text)
-        precursor_iter  = iter(precursor_queue)
+        precursor_queue      = extract_precursor_queue(resp.text)
+        precursor_iter       = iter(precursor_queue)
+        grand_spectrum_queue = extract_grand_spectrum_queue(resp.text)
+        grand_spectrum_iter  = iter(grand_spectrum_queue)
 
         for item in soup.select("div.item"):
             name_tag = item.select_one("div.name span")
@@ -182,6 +242,9 @@ def scrape():
             if raw_name == "Precursor's Emblem":
                 item_json    = next(precursor_iter, {})
                 display_name = precursor_label(item_json)
+            elif raw_name == "Grand Spectrum":
+                item_json    = next(grand_spectrum_iter, {})
+                display_name = grand_spectrum_label(item_json)
             else:
                 display_name = raw_name
 

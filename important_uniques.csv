@@ -135,13 +135,15 @@ Putembo's Meadow,Delve
 Uzaza's Valley,Delve
 Uzaza's Mountain,Delve
 Uzaza's Meadow,Delve
-Akheli's Valley,Delve
-Akheli's Mountain,Delve
-Akheli's Meadow,Delve
+Ahkeli's Valley,Delve
+Ahkeli's Mountain,Delve
+Ahkeli's Meadow,Delve
 Crown of the Tyrant,Delve
 Doryani's Machinarium,Delve
 Hale Negator,Delve
 Command of the Pit,Delve
+Cerberus Limb,Delve
+Aul's Uprising,Delve
 Stasis Prison,Legion
 Emperor's Mastery,Labyrinth
 Emperor's Cunning,Labyrinth
@@ -151,6 +153,11 @@ Grand Spectrum Frenzy,Labyrinth
 Grand Spectrum Endurance,Labyrinth
 Grand Spectrum Power,Labyrinth
 Grand Spectrum Life,Labyrinth
+Grand Spectrum Resistances,Labyrinth
+Grand Spectrum Crit Chance,Labyrinth
+Grand Spectrum Elemental Damage,Labyrinth
+Grand Spectrum Minions,Labyrinth
+Grand Spectrum Avoid Ailments,Labyrinth
 Hateforge,Ultimatum
 Gamblesprint,Ultimatum
 Relic of the Pact,Ultimatum
@@ -188,8 +195,6 @@ Vorana's Preparation,Expedition
 Olroth's Resolve,Expedition
 Cadigan's Crown,Expedition
 Vorana's March,Expedition
-Cerberus Limb,Expedition
-Aul's Uprising,Expedition
 Hand of the Fervent,Ritual
 Blackflame,Ritual
 Qotra's Regulator,Ritual
