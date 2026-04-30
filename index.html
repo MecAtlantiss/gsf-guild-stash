@@ -340,8 +340,8 @@
 <!-- Row 2: important filter -->
 <div class="controls-row2">
   <span class="controls-label">★ Important:</span>
-  <button class="filter-btn active" data-imp="all">All</button>
-  <button class="filter-btn" data-imp="1">Important Only</button>
+  <button class="filter-btn" data-imp="all">All</button>
+  <button class="filter-btn active" data-imp="1">Important Only</button>
   <button class="filter-btn" data-imp="0">Non-Important Only</button>
 </div>
 
@@ -368,7 +368,7 @@ let allRows      = [];   // merged data
 let sortCol      = "name";
 let sortDir      = 1;
 let filterHave   = "all";
-let filterImp    = "all";
+let filterImp    = "1";
 
 // ── CSV helpers ──────────────────────────────────────────
 async function fetchCSV(path) {
