@@ -522,10 +522,11 @@ function parseCSV(text) {
 
 // ── Wiki URL helper ──────────────────────────────────────
 function wikiUrl(name) {
+  if (name.startsWith("Precursor "))    return "https://www.poewiki.net/wiki/Precursor%27s_Emblem";
+  if (name.startsWith("Grand Spectrum")) return "https://www.poewiki.net/wiki/Grand_Spectrum";
   return "https://www.poewiki.net/wiki/" + name.split("").map(c => {
-    // encodeURIComponent everything except spaces (which become underscores)
     if (c === " ") return "_";
-    return encodeURIComponent(c).replace(/%27/gi, "'"); // wiki keeps apostrophes unencoded
+    return encodeURIComponent(c).replace(/%27/gi, "'");
   }).join("");
 }
 
