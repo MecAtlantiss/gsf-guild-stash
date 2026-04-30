@@ -700,6 +700,9 @@ async function init() {
 }
 
 // ── Event listeners ───────────────────────────────────────
+// Wire the static "All" source button — dynamic source buttons are wired in updateSourceFilterRow
+document.querySelector("[data-src='all']").addEventListener("click", () => setSourceFilter("all"));
+
 document.querySelectorAll("[data-have]").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("[data-have]").forEach(b => b.classList.remove("active"));
