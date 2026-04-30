@@ -514,6 +514,9 @@ async function init() {
     document.getElementById("last-updated").textContent =
       "Last updated: " + new Date().toLocaleString();
 
+    // Restore filter state saved before last auto-refresh
+    restoreFilters();
+
     updateStats();
     renderTable();
   } catch (e) {
@@ -558,6 +561,40 @@ document.getElementById("search").addEventListener("input", renderTable);
 
 init();
 
+// ── Filter state persistence (survives auto-refresh) ─────
+function saveFilters() {
+  sessionStorage.setItem("filterHave",  filterHave);
+  sessionStorage.setItem("filterImp",   filterImp);
+  sessionStorage.setItem("searchQuery", document.getElementById("search").value);
+}
+
+function restoreFilters() {
+  const savedHave  = sessionStorage.getItem("filterHave");
+  const savedImp   = sessionStorage.getItem("filterImp");
+  const savedQuery = sessionStorage.getItem("searchQuery");
+
+  if (savedHave !== null) {
+    filterHave = savedHave;
+    document.querySelectorAll("[data-have]").forEach(b => {
+      b.classList.toggle("active", b.dataset.have === filterHave);
+    });
+  }
+  if (savedImp !== null) {
+    filterImp = savedImp;
+    document.querySelectorAll("[data-imp]").forEach(b => {
+      b.classList.toggle("active", b.dataset.imp === filterImp);
+    });
+  }
+  if (savedQuery) {
+    document.getElementById("search").value = savedQuery;
+  }
+
+  // Clear so a manual refresh (F5) starts fresh
+  sessionStorage.removeItem("filterHave");
+  sessionStorage.removeItem("filterImp");
+  sessionStorage.removeItem("searchQuery");
+}
+
 // ── Auto-refresh on new commit ────────────────────────────
 // Polls the GitHub API every 60s to check for new commits.
 // If a new commit is detected, reloads the page to pull fresh CSV data.
@@ -588,6 +625,7 @@ async function pollForUpdates() {
     } else if (sha && sha !== lastKnownSha) {
       // New commit detected — reload to fetch updated CSVs
       console.log(`New commit detected (${sha.slice(0, 7)}), reloading...`);
+      saveFilters();
       location.reload();
     }
   } catch (e) {
