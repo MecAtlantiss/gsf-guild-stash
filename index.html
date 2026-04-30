@@ -329,6 +329,11 @@
   <div class="progress-track">
     <div class="progress-fill" id="progress-fill" style="width:0%"></div>
   </div>
+  <div class="progress-label" style="margin-top:16px;">&#9733; Important Progress</div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill-imp" style="width:0%; background: linear-gradient(90deg, #7a5a20, #e8b84b); box-shadow: 0 0 10px #c8973a88;"></div>
+  </div>
+  <div id="imp-progress-counts" style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:4px;letter-spacing:0.04em;font-style:italic;"></div>
 </div>
 
 <div class="controls-wrap">
@@ -466,6 +471,15 @@ function updateStats() {
   document.getElementById("stat-missing").textContent  = total - owned;
   document.getElementById("stat-pct").textContent      = pct + "%";
   document.getElementById("progress-fill").style.width = pct + "%";
+
+  // Important progress bar
+  const impRows  = allRows.filter(r => r["_important"] === "1");
+  const impOwned = impRows.filter(r => r["Ever Seen"] === "1").length;
+  const impTotal = impRows.length;
+  const impPct   = impTotal ? Math.round(impOwned / impTotal * 100) : 0;
+  document.getElementById("progress-fill-imp").style.width = impPct + "%";
+  document.getElementById("imp-progress-counts").textContent =
+    impTotal > 0 ? `${impOwned} / ${impTotal} (${impPct}%)` : "No important uniques loaded";
 }
 
 // ── Init ──────────────────────────────────────────────────
